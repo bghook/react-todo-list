@@ -1,55 +1,64 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./styles.css";
+import { NewTodoForm } from "./NewTodoForm";
+import { TodoList } from "./TodoList";
 
 // In React, you can only return a single element from a component
 // Will get errors if trying to return the form along with the h1
 // Use a fragment ( essentially an empty tag <></> ) to return multiple elements
+// Note that hooks can only be called at the top level of a functional component - cannot be called in conditional statements or loops
 export default function App() {
   // useState is a hook inside of React that allows you to add state to a functional component
   // Returns an array with two elements - first is the state, second is a function to update the state
-  const [newItem, setNewItem] = useState("");
-  const [todos, setTodos] = useState([]); // Default value is an empty array for todos
+  const [todos, setTodos] = useState(() => {
+    const localValue = localStorage.getItem("ITEMS");
+    if (localValue == null) return [];
 
-  // Function to handle form submission
-  function handleSubmit(e) {
-    e.preventDefault(); // Prevents page from refreshing
+    return JSON.parse(localValue);
+  });
 
+  useEffect(() => {
+    localStorage.setItem("ITEMS", JSON.stringify(todos));
+  }, [todos]);
+
+  function addTodo(title) {
     // Must pass a function to setTodos to ensure that the current state/current value is used
     setTodos((currentTodos) => {
       return [
         ...currentTodos,
-        { id: crypto.randomUUID(), title: newItem, completed: false },
+        { id: crypto.randomUUID(), title, completed: false },
       ];
     });
   }
 
-  // Line 21 - in React, onChange is called every single time a key is pressed, which updates the state on line 10
-  // Line 21 - e.target.value is the value of the input and allow newItem to be updated rather than being a constant empty string
-  // Line 21 - when you change a state variable, it always re-renders the component
+  function toggleTodo(id, completed) {
+    setTodos((currentTodos) => {
+      return currentTodos.map((todo) => {
+        if (todo.id === id) {
+          return { ...todo, completed };
+        }
+
+        return todo; // If current id does not match, just return as-is with no changes
+      });
+    });
+  }
+
+  function deleteTodo(id) {
+    setTodos((currentTodos) => {
+      return currentTodos.filter((todo) => todo.id !== id);
+    });
+  }
+
+  // In React, onChange is called every single time a key is pressed, which updates the state on line 10
+  // e.target.value is the value of the input and allow newItem to be updated rather than being a constant empty string
+  // When you change a state variable, it always re-renders the component
+  // Curly braces are used to embed JavaScript expressions into JSX
+  // Each element in a list must have a unique key prop
   return (
     <>
-      <form onSubmit={handleSubmit} className="new-item-form">
-        <div className="form-row">
-          <label htmlFor="item">New Item</label>
-          <input
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            type="text"
-            id="item"
-          />
-        </div>
-        <button className="btn">Add</button>
-      </form>
+      <NewTodoForm onSubmit={addTodo} />
       <h1 className="header">To-Do List</h1>
-      <ul className="list">
-        <li>
-          <label>
-            <input type="checkbox" />
-            Item 1
-          </label>
-          <button className="btn btn-danger">Delete</button>
-        </li>
-      </ul>
+      <TodoList todos={todos} toggleTodo={toggleTodo} deleteTodo={deleteTodo} />
     </>
   );
 }
